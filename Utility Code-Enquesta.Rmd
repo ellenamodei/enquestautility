@@ -1,0 +1,124 @@
+---
+title: 'Utility Code Enquesta '
+output:
+  pdf_document: default
+  html_notebook: default
+  word_document: default
+---
+
+```{r}
+library(plyr)
+library(ggplot2)
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(readxl)
+library(uuid)
+library(data.table)   
+library(stringr)
+library(lubridate)
+```
+
+
+```{r}
+data <- read_excel("~/Downloads/Delinquent_Utility_Bills_enQuesta_20210304-1.xlsx")
+df <- data.frame(data)
+```
+
+```{r}
+send1<- df %>% select(-c(CUSTOMER_NAME,CUSTOMER_ID))
+
+```
+
+
+```{r}
+library(writexl)
+```
+
+
+```{r}
+write_xlsx(send1,"C:\\Users\\ellen\\Desktop\\ndutilitymarch2021.xlsx")
+```
+
+
+```{r}
+str(df)
+```
+
+
+```{r}
+table(df$CUSTOMER_TYPE)
+```
+
+```{r}
+#Combine Columns for Totals
+df2 <- 
+    df %>% 
+    mutate(Current = CURRENT_AMT_WATER + CURRENT_AMT_SEWER +CURRENT_AMT_REFUSE,
+           Over30=W_THIRTYDAYS+ S_THIRTYDAYS+R_THIRTYDAYS,
+           Over60=W_SIXTYDAYS+S_SIXTYDAYS+R_SIXTYDAYS, 
+           Over90=W_NINTYDAYS+S_NINTYDAYS+R_NINTYDAYS,
+           Over120=W_HUNDRED20DAYS+S_HUNDRED20DAYS+R_HUNDRED20DAYS,
+           Over150=W_HUNDRED50DAYS+S_HUNDRED50DAYS+R_HUNDRED50DAYS,
+           Over180=W_HUNDRED80DAYS+S_HUNDRED80DAYS+R_HUNDRED80DAYS+W_PLUS180DAY+S_PLUS180DAYS+R_PLUS180DAYS,
+           Wateronly=W_SIXTYDAYS+W_NINTYDAYS+W_HUNDRED20DAYS+W_HUNDRED50DAYS+W_HUNDRED80DAYS+W_PLUS180DAY)  
+```
+Over30+ 
+Over30+Current+
+```{r}
+
+#Create Total.Delinquent Column by adding all accounts Over 60 days due
+df2 <- mutate(df2, Total.Delinquent = Over30+Current+Over60+Over90+Over120+Over150+Over180)
+```
+
+```{r}
+#Remove 0 from Total.Delinquent (accounts with no delinquencies) , rename delinquent
+
+delinquent <- df2 %>% filter(`Total.Delinquent` !=0)
+```
+
+
+```{r}
+#forgive all accounts Over60 and Residential
+forgive <- delinquent %>% filter(Over60>0 | Over90>0 | Over120>0|Over150>0 | Over180>0) %>% filter(PREM_PROPERTY_CLASS=='Residential' & STATUS=='Active') 
+```
+1,948,083-- 2,791,7553,513,245
+
+
+add new row to only over 60-- add new row to only over 90-- merge together
+```{r}
+over60<- forgive %>%filter(Over60>0 & Over90==0 & Over120==0 &Over150==0 & Over180==0) %>% mutate(Risk="Over60")
+
+over90<- forgive %>%filter(Over60>0 & Over90>0 | Over120>0 | Over150>0 ) %>%
+  filter(Over180==0) %>% mutate(Risk="Over90") 
+
+over180<- forgive %>% filter(Over180>0) %>% mutate(Risk="Over180") 
+
+new<-rbind(over60,over90,over180)
+```
+
+```{r}
+sum(forgive$Total.Delinquent)
+#1948083
+```
+
+```{r}
+sum(forgive$Wateronly)
+#total water owed ~ $601888.310 all over 60
+```
+
+```{r}
+summary(forgive$Total.Delinquent)
+```
+```{r}
+summary(forgive$Current)
+```
+
+```{r}
+sum(over180$Total.Delinquent)
+#1091135
+#1732 ACCT >180
+#2516 >90
+#3738>60
+#7986 TOTAL
+```
